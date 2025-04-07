@@ -35,6 +35,8 @@ class PTCB_Staff_Templates {
 
 		// Log initialization
 		ptcb_staff()->log('PTCB_Staff_Templates initialized', 'info');
+		add_filter('query_vars', array($this, 'register_query_vars'));
+		add_action('pre_get_posts', array($this, 'pre_get_posts'));
 	}
 
 	/**
@@ -45,6 +47,11 @@ class PTCB_Staff_Templates {
 	 */
 	public function load_staff_template($template) {
 		global $post;
+
+		// Debug logs
+		ptcb_staff()->log('Template loading function called for post ID: ' . ($post ? $post->ID : 'none'), 'debug');
+		ptcb_staff()->log('Post type: ' . ($post ? $post->post_type : 'none'), 'debug');
+		ptcb_staff()->log('Current template path: ' . $template, 'debug');
 
 		// Only modify template for staff post type
 		if (is_object($post) && $post->post_type === 'staff') {
@@ -60,6 +67,8 @@ class PTCB_Staff_Templates {
 				ptcb_staff()->log('Custom staff template not found at: ' . $custom_template, 'warning');
 				ptcb_staff()->log('Using default template: ' . $template, 'info');
 			}
+		} else {
+			ptcb_staff()->log('Post is not staff type or not valid object', 'debug');
 		}
 
 		return $template;
@@ -81,6 +90,43 @@ class PTCB_Staff_Templates {
 
 		return $classes;
 	}
+
+	/**
+	 * Register custom query variables
+	 *
+	 * @param array $vars Query variables
+	 * @return array Modified query variables
+	 */
+	public function register_query_vars($vars) {
+		$vars[] = 'staff';
+		ptcb_staff()->log('Registered staff query variable', 'debug');
+		return $vars;
+	}
+
+	/**
+	 * Set up post data for custom permalinks
+	 *
+	 * @param WP_Query $query The main query
+	 */
+	public function pre_get_posts($query) {
+		// Only modify main query
+		if (!$query->is_main_query()) {
+			return;
+		}
+
+		// Check if our query var is present
+		$staff_slug = $query->get('staff');
+		if (!empty($staff_slug)) {
+			// Tell WordPress this is a single staff post
+			$query->set('post_type', 'staff');
+			$query->set('name', $staff_slug);
+			$query->is_single = true;
+			$query->is_singular = true;
+
+			ptcb_staff()->log('Modified main query for staff slug: ' . $staff_slug, 'debug');
+		}
+	}
+
 	/**
 	 * Modify permalink structure for staff posts
 	 *
@@ -113,8 +159,8 @@ class PTCB_Staff_Templates {
 	public function add_staff_rewrite_rules() {
 		// Create rewrite rule for /ptcb-team/ptcb-staff/staff-member/
 		add_rewrite_rule(
-			'^ptcb-team/ptcb-staff/([^/]+)/?$',
-			'index.php?post_type=staff&name=$matches[1]',
+			'ptcb-team/ptcb-staff/([^/]+)/?$',
+			'index.php?staff=$matches[1]',
 			'top'
 		);
 
