@@ -21,6 +21,115 @@ define('PTCB_STAFF_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('PTCB_STAFF_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('PTCB_STAFF_PLUGIN_BASENAME', plugin_basename(__FILE__));
 define('PTCB_STAFF_LOG_DIR', PTCB_STAFF_PLUGIN_DIR . 'logs/');
+
+/**
+ * Modify the staff post type registration to use our custom permalink structure
+ */
+function ptcb_staff_modify_post_type() {
+	global $wp_post_types;
+
+	// Make sure the post type exists
+	if (isset($wp_post_types['staff'])) {
+		// Modify the rewrite rules
+		$wp_post_types['staff']->rewrite = array(
+			'slug' => 'ptcb-team/ptcb-staff',
+			'with_front' => false,
+			'feeds' => false,
+			'pages' => true
+		);
+
+		// Ensure the post type has an archive
+		$wp_post_types['staff']->has_archive = true;
+
+		// Log the modification
+		ptcb_staff()->log('Modified staff post type rewrite rules to use ptcb-team/ptcb-staff slug', 'info');
+
+		// Flush rewrite rules once
+		if (get_option('ptcb_staff_post_type_modified') !== 'yes') {
+			flush_rewrite_rules();
+			update_option('ptcb_staff_post_type_modified', 'yes');
+			ptcb_staff()->log('Flushed rewrite rules after modifying staff post type', 'info');
+		}
+	}
+}
+
+// Run before init (priority 1) to modify the post type early
+add_action('init', 'ptcb_staff_modify_post_type', 1);
+
+/**
+ * Handle custom template loading for staff single posts
+ *
+ * @param string $template The current template path
+ * @return string The modified template path
+ */
+function ptcb_staff_handle_custom_template($template) {
+	// Get the current URL path
+	$request_uri = $_SERVER['REQUEST_URI'];
+
+	// Check if this matches our staff custom URL pattern
+	if (preg_match('#/ptcb-team/ptcb-staff/([^/]+)/?$#', $request_uri, $matches)) {
+		$slug = $matches[1];
+		ptcb_staff()->log('Detected staff URL pattern for slug: ' . $slug, 'debug');
+
+		// Query for the staff post with this slug
+		$staff_query = new WP_Query([
+			'name' => $slug,
+			'post_type' => 'staff',
+			'posts_per_page' => 1
+		]);
+
+		if ($staff_query->have_posts()) {
+			// Get the post title without disturbing the loop
+			$staff_post = $staff_query->posts[0];
+			$staff_title = $staff_post->post_title;
+
+			// Set up the global query and post
+			global $wp_query, $post, $wp_the_query;
+			$original_post = $post;
+			$wp_query = $staff_query;
+			$wp_the_query = $staff_query; // Important!
+			$post = $staff_post;
+			setup_postdata($post);
+
+			// Fix 404 status and set proper page status
+			status_header(200);
+			$wp_query->is_404 = false;
+			$wp_query->is_single = true;
+			$wp_query->is_singular = true;
+
+			// Set post_title in the global $post object
+			$post->post_title = $staff_title;
+
+			// Set the page title
+			add_filter('the_title', function($title, $id) use ($staff_post, $staff_title) {
+				if ($id == $staff_post->ID) {
+					return $staff_title;
+				}
+				return $title;
+			}, 10, 2);
+
+			// Direct override of document title
+			add_filter('pre_get_document_title', function() use ($staff_title) {
+				return $staff_title . ' - PTCB';
+			}, 9999);
+
+			// Load our template
+			$custom_template = PTCB_STAFF_PLUGIN_DIR . 'templates/single-staff.php';
+
+			if (file_exists($custom_template)) {
+				ptcb_staff()->log('Loading custom template for staff: ' . $custom_template, 'info');
+				return $custom_template;
+			} else {
+				ptcb_staff()->log('Custom template not found at: ' . $custom_template, 'error');
+			}
+		}
+	}
+
+	return $template;
+}
+// Add the template filter with high priority
+add_filter('template_include', 'ptcb_staff_handle_custom_template', 99);
+
 /**
  * Main PTCB Staff Plugin Class
  */
