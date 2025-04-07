@@ -21,7 +21,8 @@ class PTCB_Staff_Helpers {
 	 * Constructor
 	 */
 	public function __construct() {
-		// Nothing to initialize
+		// Log initialization
+		ptcb_staff()->log('PTCB_Staff_Helpers initialized', 'info');
 	}
 
 	/**
@@ -34,16 +35,25 @@ class PTCB_Staff_Helpers {
 	 */
 	public static function get_acf_field($field_name, $post_id = null, $default = '') {
 		if (!function_exists('get_field')) {
-			ptcb_staff()->log('ACF get_field function not available', 'error');
+			ptcb_staff()->log('ACF get_field function not available when trying to get ' . $field_name, 'error');
 			return $default;
 		}
 
 		if (!$post_id) {
 			$post_id = get_the_ID();
+			ptcb_staff()->log('No post ID provided, using current post ID: ' . $post_id, 'debug');
 		}
 
+		ptcb_staff()->log('Getting ACF field: ' . $field_name . ' for post ID: ' . $post_id, 'debug');
 		$value = get_field($field_name, $post_id);
-		return !empty($value) ? $value : $default;
+
+		if (empty($value)) {
+			ptcb_staff()->log('ACF field ' . $field_name . ' is empty for post ID: ' . $post_id . ', using default value', 'debug');
+			return $default;
+		}
+
+		ptcb_staff()->log('Successfully retrieved ACF field: ' . $field_name, 'debug');
+		return $value;
 	}
 
 	/**
@@ -53,7 +63,10 @@ class PTCB_Staff_Helpers {
 	 * @return string Company title or empty string
 	 */
 	public static function get_company_title($post_id = null) {
-		return self::get_acf_field('company_title', $post_id, '');
+		ptcb_staff()->log('Getting company title for post ID: ' . ($post_id ?: 'current post'), 'debug');
+		$title = self::get_acf_field('company_title', $post_id, '');
+		ptcb_staff()->log('Company title value: ' . ($title ?: 'empty'), 'debug');
+		return $title;
 	}
 
 	/**
@@ -64,17 +77,23 @@ class PTCB_Staff_Helpers {
 	 * @return string|void The HTML if $echo is false
 	 */
 	public static function the_company_title($post_id = null, $echo = true) {
+		ptcb_staff()->log('Generating company title HTML for post ID: ' . ($post_id ?: 'current post'), 'debug');
+
 		$company_title = self::get_company_title($post_id);
 
 		if (empty($company_title)) {
+			ptcb_staff()->log('Company title is empty, returning empty string', 'debug');
 			return '';
 		}
 
 		$html = '<div class="ptcb-staff-company-title">' . esc_html($company_title) . '</div>';
+		ptcb_staff()->log('Generated company title HTML', 'debug');
 
 		if ($echo) {
+			ptcb_staff()->log('Echoing company title HTML', 'debug');
 			echo $html;
 		} else {
+			ptcb_staff()->log('Returning company title HTML', 'debug');
 			return $html;
 		}
 	}
@@ -90,7 +109,10 @@ class PTCB_Staff_Helpers {
 	public static function get_staff_image($post_id = null, $size = 'medium', $attr = array()) {
 		if (!$post_id) {
 			$post_id = get_the_ID();
+			ptcb_staff()->log('No post ID provided for image, using current post ID: ' . $post_id, 'debug');
 		}
+
+		ptcb_staff()->log('Getting staff image for post ID: ' . $post_id . ' with size: ' . $size, 'debug');
 
 		// Set default class for the image
 		if (!isset($attr['class'])) {
@@ -99,13 +121,16 @@ class PTCB_Staff_Helpers {
 			$attr['class'] .= ' ptcb-staff-image';
 		}
 
+		ptcb_staff()->log('Image attributes: ' . print_r($attr, true), 'debug');
+
 		// Get the featured image
 		if (has_post_thumbnail($post_id)) {
+			ptcb_staff()->log('Featured image found for post ID: ' . $post_id, 'debug');
 			return get_the_post_thumbnail($post_id, $size, $attr);
 		}
 
 		// No image found
-		ptcb_staff()->log('No featured image for staff ID: ' . $post_id, 'info');
+		ptcb_staff()->log('No featured image found for post ID: ' . $post_id, 'warning');
 		return '';
 	}
 
@@ -126,12 +151,16 @@ class PTCB_Staff_Helpers {
 
 		$args = wp_parse_args($args, $default_args);
 
+		ptcb_staff()->log('Querying staff members with args: ' . print_r($args, true), 'info');
+
 		$staff_query = new WP_Query($args);
 
 		if ($staff_query->have_posts()) {
+			ptcb_staff()->log('Query found ' . count($staff_query->posts) . ' staff members', 'info');
 			return $staff_query->posts;
 		}
 
+		ptcb_staff()->log('No staff members found in query', 'warning');
 		return array();
 	}
 
@@ -141,6 +170,8 @@ class PTCB_Staff_Helpers {
 	 * @return bool True if viewing a staff single post
 	 */
 	public static function is_staff_single() {
-		return is_singular('staff');
+		$is_staff = is_singular('staff');
+		ptcb_staff()->log('Checking if current page is a staff single: ' . ($is_staff ? 'true' : 'false'), 'debug');
+		return $is_staff;
 	}
 }

@@ -26,6 +26,9 @@ class PTCB_Staff_Templates {
 
 		// Add body classes for staff posts
 		add_filter('body_class', array($this, 'add_staff_body_classes'));
+
+		// Log initialization
+		ptcb_staff()->log('PTCB_Staff_Templates initialized', 'info');
 	}
 
 	/**
@@ -39,6 +42,8 @@ class PTCB_Staff_Templates {
 
 		// Only modify template for staff post type
 		if (is_object($post) && $post->post_type === 'staff') {
+			ptcb_staff()->log('Processing template for staff post ID: ' . $post->ID, 'info');
+
 			$custom_template = PTCB_STAFF_PLUGIN_DIR . 'templates/single-staff.php';
 
 			// Use our custom template if it exists
@@ -46,7 +51,8 @@ class PTCB_Staff_Templates {
 				ptcb_staff()->log('Loading custom staff template: ' . $custom_template, 'info');
 				return $custom_template;
 			} else {
-				ptcb_staff()->log('Custom staff template not found, using default: ' . $template, 'warning');
+				ptcb_staff()->log('Custom staff template not found at: ' . $custom_template, 'warning');
+				ptcb_staff()->log('Using default template: ' . $template, 'info');
 			}
 		}
 
@@ -61,53 +67,12 @@ class PTCB_Staff_Templates {
 	 */
 	public function add_staff_body_classes($classes) {
 		if (is_singular('staff')) {
+			ptcb_staff()->log('Adding staff body classes', 'info');
 			$classes[] = 'ptcb-staff-single';
 			$classes[] = 'ptcb-staff-template';
+			ptcb_staff()->log('Added classes: ptcb-staff-single, ptcb-staff-template', 'debug');
 		}
 
 		return $classes;
-	}
-
-	/**
-	 * Get the company title field
-	 *
-	 * @param int $post_id Optional post ID
-	 * @return string The company title or empty string if not found
-	 */
-	public static function get_company_title($post_id = null) {
-		if (!function_exists('get_field')) {
-			ptcb_staff()->log('ACF get_field function not available', 'error');
-			return '';
-		}
-
-		if (!$post_id) {
-			$post_id = get_the_ID();
-		}
-
-		$company_title = get_field('company_title', $post_id);
-		return $company_title ? $company_title : '';
-	}
-
-	/**
-	 * Display the company title with proper markup
-	 *
-	 * @param int $post_id Optional post ID
-	 * @param bool $echo Whether to echo or return the HTML
-	 * @return string|void The HTML if $echo is false
-	 */
-	public static function the_company_title($post_id = null, $echo = true) {
-		$company_title = self::get_company_title($post_id);
-
-		if (empty($company_title)) {
-			return '';
-		}
-
-		$html = '<div class="ptcb-staff-company-title">' . esc_html($company_title) . '</div>';
-
-		if ($echo) {
-			echo $html;
-		} else {
-			return $html;
-		}
 	}
 }
