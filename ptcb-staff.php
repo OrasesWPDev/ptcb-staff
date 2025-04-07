@@ -16,11 +16,11 @@ if (!defined('ABSPATH')) {
 }
 
 /**
- * Debug mode - enabled for development
+ * Debug mode - disabled by default for safety
  * Controls logging and visualization features throughout the plugin.
  * Particularly useful for template and hook debugging with Flatsome theme.
  */
-define('PTCB_STAFF_DEBUG_MODE', true);
+define('PTCB_STAFF_DEBUG_MODE', false); // CHANGED: Set to false by default for safety
 
 // Define plugin constants
 define('PTCB_STAFF_VERSION', '1.0.0');
@@ -63,25 +63,48 @@ final class PTCB_Staff {
 	 * Constructor
 	 */
 	private function __construct() {
-		// Setup debug logging
-		$this->setup_debug_logging();
+		// CHANGED: Removed immediate debug logging setup from constructor
 
-		// Auto-load includes
-		$this->autoload_includes();
+		// Auto-load includes - wrapped in try/catch for safety
+		try {
+			$this->autoload_includes();
+		} catch (Exception $e) {
+			// If autoloading fails, we'll still set up basic functionality
+			if (is_admin()) {
+				add_action('admin_notices', function() use ($e) {
+					echo '<div class="notice notice-error"><p>PTCB Staff: Error loading plugin files: ' . esc_html($e->getMessage()) . '</p></div>';
+				});
+			}
+		}
 
 		// Initialize hooks
 		$this->init_hooks();
 
-		// Log initialization
-		$this->log('Plugin initialized', 'info');
+		// Only log after initialization if debug mode is enabled and log directory exists
+		if (PTCB_STAFF_DEBUG_MODE && file_exists(PTCB_STAFF_LOG_DIR)) {
+			$this->log('Plugin initialized', 'info');
+		}
 	}
 
 	/**
 	 * Setup debug logging
+	 *
+	 * CHANGED: Added return value and better error handling
+	 *
+	 * @return bool True if setup was successful, false otherwise
 	 */
 	private function setup_debug_logging() {
-		if (PTCB_STAFF_DEBUG_MODE && !file_exists(PTCB_STAFF_LOG_DIR)) {
-			mkdir(PTCB_STAFF_LOG_DIR, 0755, true);
+		if (!PTCB_STAFF_DEBUG_MODE) {
+			return false;
+		}
+
+		// Only try to create directory if it doesn't exist
+		if (!file_exists(PTCB_STAFF_LOG_DIR)) {
+			// Add error suppression operator to prevent warnings
+			if (!@mkdir(PTCB_STAFF_LOG_DIR, 0755, true)) {
+				// If directory creation fails, return false
+				return false;
+			}
 
 			// Create .htaccess file to prevent direct access
 			$htaccess_content = "# Prevent direct access to files\n";
@@ -90,38 +113,52 @@ final class PTCB_Staff {
 			$htaccess_content .= "Deny from all\n";
 			$htaccess_content .= "</FilesMatch>\n";
 
-			file_put_contents(PTCB_STAFF_LOG_DIR . '.htaccess', $htaccess_content);
+			// Use file_put_contents with error suppression
+			@file_put_contents(PTCB_STAFF_LOG_DIR . '.htaccess', $htaccess_content);
 
 			// Create index.html to prevent directory listing
-			file_put_contents(PTCB_STAFF_LOG_DIR . 'index.html', '<!-- Silence is golden -->');
+			@file_put_contents(PTCB_STAFF_LOG_DIR . 'index.html', '<!-- Silence is golden -->');
 		}
+
+		return true;
 	}
 
 	/**
 	 * Log a message when debug mode is enabled
 	 *
+	 * CHANGED: Added better error checking
+	 *
 	 * @param string $message The message to log
 	 * @param string $level   The severity level (info, warning, error)
+	 * @return bool Whether logging was successful
 	 */
 	public function log($message, $level = 'info') {
-		if (!PTCB_STAFF_DEBUG_MODE) {
-			return;
+		if (!PTCB_STAFF_DEBUG_MODE || !file_exists(PTCB_STAFF_LOG_DIR) || !is_writable(PTCB_STAFF_LOG_DIR)) {
+			return false;
 		}
 
-		// Set timezone to EST
-		$date = new DateTime('now', new DateTimeZone('America/New_York'));
-		$timestamp = $date->format('Y-m-d H:i:s');
+		try {
+			// Set timezone to EST
+			$date = new DateTime('now', new DateTimeZone('America/New_York'));
+			$timestamp = $date->format('Y-m-d H:i:s');
 
-		// Format log message
-		$log_message = "[{$timestamp}] [{$level}] {$message}" . PHP_EOL;
+			// Format log message
+			$log_message = "[{$timestamp}] [{$level}] {$message}" . PHP_EOL;
 
-		// Write to log file
-		$log_file = PTCB_STAFF_LOG_DIR . 'ptcb-staff-' . date('Y-m-d') . '.log';
-		file_put_contents($log_file, $log_message, FILE_APPEND);
+			// Write to log file with error suppression
+			$log_file = PTCB_STAFF_LOG_DIR . 'ptcb-staff-' . date('Y-m-d') . '.log';
+			return (bool)@file_put_contents($log_file, $log_message, FILE_APPEND);
+		} catch (Exception $e) {
+			return false;
+		}
+
+		return true;
 	}
 
 	/**
 	 * Auto-load included files
+	 *
+	 * CHANGED: Added better error handling
 	 */
 	private function autoload_includes() {
 		// Core includes directory
@@ -139,22 +176,39 @@ final class PTCB_Staff {
 	/**
 	 * Load all PHP files from a directory
 	 *
+	 * CHANGED: Added better error handling
+	 *
 	 * @param string $dir The directory to load files from
 	 */
 	private function load_files_from_directory($dir) {
 		if (!file_exists($dir)) {
-			$this->log("Directory does not exist: {$dir}", 'warning');
+			if (PTCB_STAFF_DEBUG_MODE && file_exists(PTCB_STAFF_LOG_DIR)) {
+				$this->log("Directory does not exist: {$dir}", 'warning');
+			}
 			return;
 		}
 
-		$files = glob($dir . '/*.php');
+		$files = @glob($dir . '/*.php');
+		if (!is_array($files)) {
+			return;
+		}
+
 		foreach ($files as $file) {
-			$this->load_file($file);
+			try {
+				$this->load_file($file);
+			} catch (Exception $e) {
+				if (PTCB_STAFF_DEBUG_MODE && file_exists(PTCB_STAFF_LOG_DIR)) {
+					$this->log("Error loading file {$file}: " . $e->getMessage(), 'error');
+				}
+				continue;
+			}
 		}
 	}
 
 	/**
 	 * Load a single PHP file
+	 *
+	 * CHANGED: Added error handling
 	 *
 	 * @param string $file The file path to load
 	 */
@@ -166,31 +220,45 @@ final class PTCB_Staff {
 			return;
 		}
 
-		// Load the file
-		require_once $file;
+		// Load the file with error suppression
+		if (!@include_once $file) {
+			throw new Exception("Failed to load {$file}");
+		}
 
 		// Check if this is a class file
 		if (strpos($filename, 'class-') === 0) {
 			$this->maybe_instantiate_class($file);
 		}
 
-		$this->log("Loaded file: {$filename}", 'info');
+		if (PTCB_STAFF_DEBUG_MODE && file_exists(PTCB_STAFF_LOG_DIR)) {
+			$this->log("Loaded file: {$filename}", 'info');
+		}
 	}
 
 	/**
 	 * Try to instantiate a class from the file
 	 *
+	 * CHANGED: Added error handling
+	 *
 	 * @param string $file The file path that might contain a class
 	 */
 	private function maybe_instantiate_class($file) {
-		$filename = basename($file, '.php');
-		$class_name = $this->filename_to_classname($filename);
+		try {
+			$filename = basename($file, '.php');
+			$class_name = $this->filename_to_classname($filename);
 
-		if (class_exists($class_name)) {
-			// Only instantiate if not already loaded
-			if (!isset($this->loaded_classes[$class_name])) {
-				$this->loaded_classes[$class_name] = new $class_name();
-				$this->log("Instantiated class: {$class_name}", 'info');
+			if (class_exists($class_name)) {
+				// Only instantiate if not already loaded
+				if (!isset($this->loaded_classes[$class_name])) {
+					$this->loaded_classes[$class_name] = new $class_name();
+					if (PTCB_STAFF_DEBUG_MODE && file_exists(PTCB_STAFF_LOG_DIR)) {
+						$this->log("Instantiated class: {$class_name}", 'info');
+					}
+				}
+			}
+		} catch (Exception $e) {
+			if (PTCB_STAFF_DEBUG_MODE && file_exists(PTCB_STAFF_LOG_DIR)) {
+				$this->log("Failed to instantiate class from {$file}: " . $e->getMessage(), 'error');
 			}
 		}
 	}
@@ -230,29 +298,40 @@ final class PTCB_Staff {
 
 	/**
 	 * Plugin activation
+	 *
+	 * CHANGED: Added better error handling and setup debug logging here instead of constructor
 	 */
 	public function activation() {
-		// Create required directories
-		if (!file_exists(PTCB_STAFF_PLUGIN_DIR . 'includes')) {
-			mkdir(PTCB_STAFF_PLUGIN_DIR . 'includes', 0755, true);
-		}
+		// Setup debug logging if enabled
+		$this->setup_debug_logging();
 
-		if (!file_exists(PTCB_STAFF_PLUGIN_DIR . 'assets/css')) {
-			mkdir(PTCB_STAFF_PLUGIN_DIR . 'assets/css', 0755, true);
-		}
-
-		if (!file_exists(PTCB_STAFF_PLUGIN_DIR . 'assets/js')) {
-			mkdir(PTCB_STAFF_PLUGIN_DIR . 'assets/js', 0755, true);
-		}
-
-		if (!file_exists(PTCB_STAFF_PLUGIN_DIR . 'templates')) {
-			mkdir(PTCB_STAFF_PLUGIN_DIR . 'templates', 0755, true);
-		}
+		// Create required directories with error handling
+		$this->create_directory(PTCB_STAFF_PLUGIN_DIR . 'includes');
+		$this->create_directory(PTCB_STAFF_PLUGIN_DIR . 'assets/css');
+		$this->create_directory(PTCB_STAFF_PLUGIN_DIR . 'assets/js');
+		$this->create_directory(PTCB_STAFF_PLUGIN_DIR . 'templates');
 
 		// Flush rewrite rules
 		flush_rewrite_rules();
 
-		$this->log('Plugin activated', 'info');
+		if (PTCB_STAFF_DEBUG_MODE && file_exists(PTCB_STAFF_LOG_DIR)) {
+			$this->log('Plugin activated', 'info');
+		}
+	}
+
+	/**
+	 * Create directory safely
+	 *
+	 * ADDED: New helper function for safer directory creation
+	 *
+	 * @param string $dir Directory path to create
+	 * @return bool Whether the operation was successful
+	 */
+	private function create_directory($dir) {
+		if (!file_exists($dir)) {
+			return @mkdir($dir, 0755, true);
+		}
+		return true;
 	}
 
 	/**
@@ -262,7 +341,9 @@ final class PTCB_Staff {
 		// Flush rewrite rules
 		flush_rewrite_rules();
 
-		$this->log('Plugin deactivated', 'info');
+		if (PTCB_STAFF_DEBUG_MODE && file_exists(PTCB_STAFF_LOG_DIR)) {
+			$this->log('Plugin deactivated', 'info');
+		}
 	}
 
 	/**
@@ -283,9 +364,9 @@ final class PTCB_Staff {
 	 */
 	public function acf_missing_notice() {
 		?>
-		<div class="notice notice-error">
-			<p><?php _e('PTCB Staff Plugin requires Advanced Custom Fields to be installed and activated.', 'ptcb-staff'); ?></p>
-		</div>
+        <div class="notice notice-error">
+            <p><?php _e('PTCB Staff Plugin requires Advanced Custom Fields to be installed and activated.', 'ptcb-staff'); ?></p>
+        </div>
 		<?php
 	}
 
@@ -294,9 +375,9 @@ final class PTCB_Staff {
 	 */
 	public function acf_pro_missing_notice() {
 		?>
-		<div class="notice notice-error">
-			<p><?php _e('PTCB Staff Plugin requires the PRO version of Advanced Custom Fields to be installed and activated.', 'ptcb-staff'); ?></p>
-		</div>
+        <div class="notice notice-error">
+            <p><?php _e('PTCB Staff Plugin requires the PRO version of Advanced Custom Fields to be installed and activated.', 'ptcb-staff'); ?></p>
+        </div>
 		<?php
 	}
 
@@ -316,7 +397,9 @@ final class PTCB_Staff {
 				array(),
 				$css_version
 			);
-			$this->log('Enqueued CSS file with version: ' . $css_version, 'info');
+			if (PTCB_STAFF_DEBUG_MODE && file_exists(PTCB_STAFF_LOG_DIR)) {
+				$this->log('Enqueued CSS file with version: ' . $css_version, 'info');
+			}
 
 			// Register and enqueue JS with dynamic versioning
 			$js_file = PTCB_STAFF_PLUGIN_DIR . 'assets/js/ptcb-staff.js';
@@ -328,7 +411,9 @@ final class PTCB_Staff {
 				$js_version,
 				true
 			);
-			$this->log('Enqueued JS file with version: ' . $js_version, 'info');
+			if (PTCB_STAFF_DEBUG_MODE && file_exists(PTCB_STAFF_LOG_DIR)) {
+				$this->log('Enqueued JS file with version: ' . $js_version, 'info');
+			}
 		}
 	}
 }
