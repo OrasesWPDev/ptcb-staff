@@ -25,6 +25,8 @@ class PTCB_Staff_Shortcodes {
 	public function __construct() {
 		// Register shortcodes
 		add_shortcode('ptcb_staff', array($this, 'staff_shortcode'));
+		// Add this new line below the existing shortcode registration
+		add_shortcode('staff_breadcrumbs', array($this, 'breadcrumbs_shortcode_callback'));
 		// Log shortcode registration
 		ptcb_staff()->log('PTCB_Staff_Shortcodes initialized and shortcodes registered', 'info');
 	}
@@ -183,5 +185,56 @@ class PTCB_Staff_Shortcodes {
 
 		// Return the shortcode output
 		return $output;
+	}
+	/**
+	 * Breadcrumbs shortcode callback
+	 *
+	 * Outputs a breadcrumb trail in the format: Ptcb / ptcb-team / ptcb-staff / Current Staff Title
+	 *
+	 * @since 1.0.0
+	 * @return string Breadcrumbs HTML
+	 */
+	public function breadcrumbs_shortcode_callback() {
+		ob_start();
+
+		// Get the home URL for the "Ptcb" link
+		$home_url = home_url();
+
+		// Find the ptcb-team page
+		$team_page = get_page_by_path('ptcb-team');
+		$team_url = $team_page ? get_permalink($team_page->ID) : '#';
+		$team_title = $team_page ? $team_page->post_title : 'ptcb-team';
+
+		// Find the ptcb-staff page (child of ptcb-team)
+		$staff_page = get_page_by_path('ptcb-team/ptcb-staff');
+		$staff_url = $staff_page ? get_permalink($staff_page->ID) : '#';
+		$staff_title = $staff_page ? $staff_page->post_title : 'ptcb-staff';
+
+		// Start breadcrumbs container
+		echo '<div class="ptcb-staff-breadcrumbs">';
+
+		// Ptcb link (home)
+		echo '<a href="' . esc_url($home_url) . '">Ptcb</a>';
+		echo '<span class="ptcb-breadcrumb-divider"> / </span>';
+
+		// ptcb-team link
+		echo '<a href="' . esc_url($team_url) . '">' . esc_html($team_title) . '</a>';
+		echo '<span class="ptcb-breadcrumb-divider"> / </span>';
+
+		if (is_singular('staff')) {
+			// ptcb-staff link
+			echo '<a href="' . esc_url($staff_url) . '">' . esc_html($staff_title) . '</a>';
+			echo '<span class="ptcb-breadcrumb-divider"> / </span>';
+
+			// Current staff member (no link)
+			echo '<span class="breadcrumb_last">' . esc_html(get_the_title()) . '</span>';
+		} else {
+			// On archive/listing page, just show ptcb-staff as current
+			echo '<span class="breadcrumb_last">' . esc_html($staff_title) . '</span>';
+		}
+
+		echo '</div>';
+
+		return ob_get_clean();
 	}
 }
