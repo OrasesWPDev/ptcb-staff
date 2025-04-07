@@ -13,17 +13,18 @@ if (!defined('ABSPATH')) {
 /**
  * PTCB Staff Shortcodes Class
  *
- * Handles registration and processing of shortcodes
+ * Handles registration and processing of shortcodes for displaying staff members
+ * in a responsive grid layout via the [ptcb_staff] shortcode.
  */
 class PTCB_Staff_Shortcodes {
-
 	/**
 	 * Constructor
+	 *
+	 * Registers the shortcode and initializes logging
 	 */
 	public function __construct() {
 		// Register shortcodes
 		add_shortcode('ptcb_staff', array($this, 'staff_shortcode'));
-
 		// Log shortcode registration
 		ptcb_staff()->log('PTCB_Staff_Shortcodes initialized and shortcodes registered', 'info');
 	}
@@ -31,8 +32,11 @@ class PTCB_Staff_Shortcodes {
 	/**
 	 * Main staff shortcode function
 	 *
+	 * Processes the [ptcb_staff] shortcode which displays staff members in a grid layout.
+	 * Accepts parameters: columns, limit, orderby, order
+	 *
 	 * @param array $atts Shortcode attributes
-	 * @return string Shortcode output
+	 * @return string Shortcode HTML output
 	 */
 	public function staff_shortcode($atts) {
 		ptcb_staff()->log('Processing [ptcb_staff] shortcode with attributes: ' . print_r($atts, true), 'info');
@@ -81,13 +85,11 @@ class PTCB_Staff_Shortcodes {
 		if ($staff_query->have_posts()) {
 			// Main container with number of columns as a class
 			echo '<div class="ptcb-staff-grid ptcb-staff-columns-' . esc_attr($columns) . '">';
-
 			$count = 0;
 
 			while ($staff_query->have_posts()) {
 				$staff_query->the_post();
 				$post_id = get_the_ID();
-
 				ptcb_staff()->log('Processing staff member: ID=' . $post_id . ', Title=' . get_the_title(), 'debug');
 
 				// Start a new row if needed
@@ -107,20 +109,36 @@ class PTCB_Staff_Shortcodes {
 				// Individual staff card
 				?>
                 <div class="ptcb-staff-column ptcb-staff-column-<?php echo esc_attr($count % $columns + 1); ?>">
+                    <!-- Staff Member Card - Container for entire staff member display -->
                     <div class="ptcb-staff-card">
                         <a href="<?php the_permalink(); ?>" class="ptcb-staff-card-link">
+
 							<?php if (!empty($staff_image)): ?>
+                                <!-- STAFF IMAGE SECTION
+									 This section contains the staff member's featured image
+									 Class 'ptcb-staff-card-image' can be used for styling the image container -->
                                 <div class="ptcb-staff-card-image">
-									<?php echo $staff_image; ?>
+									<?php echo $staff_image; // Displays the featured image with proper attributes ?>
                                 </div>
 							<?php endif; ?>
 
+                            <!-- STAFF CONTENT SECTION
+                                 This section contains all text content for the staff member
+                                 Class 'ptcb-staff-card-content' can be used for styling the entire content area -->
                             <div class="ptcb-staff-card-content">
+                                <!-- Post Title - Staff Member's Name
+                                     Class 'ptcb-staff-card-title' can be used for styling the name/title -->
                                 <h3 class="ptcb-staff-card-title"><?php the_title(); ?></h3>
 
+                                <!-- Separator between name and company title
+                                     Class 'ptcb-staff-title-separator' can be used for styling this divider -->
+                                <hr class="ptcb-staff-title-separator">
+
 								<?php if (!empty($company_title)): ?>
+                                    <!-- Company Title - Staff Member's Position/Role
+										 Class 'ptcb-staff-card-company-title' can be used for styling the position text -->
                                     <div class="ptcb-staff-card-company-title">
-										<?php echo esc_html($company_title); ?>
+										<?php echo esc_html($company_title); // Displays the ACF company_title field ?>
                                     </div>
 								<?php endif; ?>
                             </div>
@@ -128,7 +146,6 @@ class PTCB_Staff_Shortcodes {
                     </div>
                 </div>
 				<?php
-
 				$count++;
 
 				// Close the row if needed
@@ -137,12 +154,10 @@ class PTCB_Staff_Shortcodes {
 					if ($count === $staff_query->post_count && $count % $columns !== 0) {
 						$empty_columns = $columns - ($count % $columns);
 						ptcb_staff()->log('Adding ' . $empty_columns . ' empty columns to complete the last row', 'debug');
-
 						for ($i = 0; $i < $empty_columns; $i++) {
 							echo '<div class="ptcb-staff-column ptcb-staff-column-empty"></div>';
 						}
 					}
-
 					ptcb_staff()->log('Closing row at position ' . $count, 'debug');
 					echo '</div><!-- .ptcb-staff-row -->';
 				}
@@ -152,8 +167,11 @@ class PTCB_Staff_Shortcodes {
 			ptcb_staff()->log('Completed rendering staff grid with ' . $count . ' members', 'info');
 
 		} else {
+			// No staff members found - display a friendly message to site visitors
 			ptcb_staff()->log('No staff members found to display', 'warning');
-			echo '<div class="ptcb-staff-not-found">No staff members found.</div>';
+			echo '<div class="ptcb-staff-not-found">
+                    <p>No staff to show at this time. Please check back later.</p>
+                  </div>';
 		}
 
 		// Restore original post data

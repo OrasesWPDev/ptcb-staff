@@ -1,0 +1,193 @@
+/* ----------------------------------------
+   PTCB STAFF - ARCHIVE/GRID CSS
+   For styling the [ptcb_staff] shortcode output
+   Using Flatsome theme's structure and breakpoints
+   ---------------------------------------- */
+
+/* ----------------------------------------
+   1. CSS VARIABLES (CUSTOM PROPERTIES)
+   ---------------------------------------- */
+:root {
+    /* Base image sizes */
+    --ptcb-staff-archive-image-width: 225px;
+    --ptcb-staff-archive-image-height: 300px;
+
+    /* Spacing values */
+    --ptcb-staff-spacing-small: 10px;
+    --ptcb-staff-spacing-medium: 20px;
+    --ptcb-staff-spacing-large: 40px;
+
+    /* Colors - TO BE CUSTOMIZED */
+    --ptcb-staff-primary-color: #0066cc;
+    --ptcb-staff-secondary-color: #444444;
+    --ptcb-staff-text-color: #333333;
+    --ptcb-staff-title-color: #222222;
+    --ptcb-staff-company-color: #666666;
+    --ptcb-staff-bg-color: #ffffff;
+    --ptcb-staff-border-color: #eeeeee;
+    --ptcb-staff-separator-color: #dddddd;
+}
+
+/* ----------------------------------------
+   2. GRID LAYOUT & MAIN CONTAINERS
+   ---------------------------------------- */
+/* Main grid container */
+.ptcb-staff-grid {
+    width: 100%;
+    margin: 0 auto;
+    /* Using Flatsome's container padding system */
+    padding-left: 15px;
+    padding-right: 15px;
+}
+
+/* Row container - match Flatsome's row styling */
+.ptcb-staff-row {
+    display: flex;
+    flex-flow: row wrap;
+    width: 100%;
+    margin-left: -15px;
+    margin-right: -15px;
+    margin-bottom: var(--ptcb-staff-spacing-large);
+}
+
+/* Column styling - using Flatsome's column structure */
+.ptcb-staff-column {
+    padding: 0 15px 30px;
+    width: 33.333%;
+    max-width: 33.333%;
+    flex: 0 0 33.333%;
+}
+
+/* Empty column fix */
+.ptcb-staff-column-empty {
+    padding: 0;
+    margin: 0;
+    height: 0;
+}
+
+/* ----------------------------------------
+   3. STAFF CARD STYLING
+   ---------------------------------------- */
+/* Individual staff card */
+.ptcb-staff-card {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    border: 1px solid var(--ptcb-staff-border-color);
+    border-radius: 3px;
+    overflow: hidden;
+    background-color: var(--ptcb-staff-bg-color);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    transition: transform .3s, box-shadow .3s;
+}
+
+.ptcb-staff-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+}
+
+/* Card link styling - match Flatsome's link styling */
+.ptcb-staff-card-link {
+    display: block;
+    text-decoration: none;
+    color: inherit;
+    height: 100%;
+}
+
+/* ----------------------------------------
+   4. STAFF IMAGE STYLING
+   ---------------------------------------- */
+/* Image container */
+.ptcb-staff-card-image {
+    position: relative;
+    overflow: hidden;
+    background-color: #f7f7f7;
+}
+
+/* Thumbnail styling - match Flatsome image handling */
+.ptcb-staff-image {
+    width: 100%;
+    height: auto;
+    display: block;
+    transition: transform .3s ease-out;
+    backface-visibility: hidden;
+}
+
+.ptcb-staff-card:hover .ptcb-staff-image {
+    transform: scale(1.05);
+}
+
+/* ----------------------------------------
+   5. STAFF CONTENT STYLING
+   ---------------------------------------- */
+/* Content container */
+.ptcb-staff-card-content {
+    padding: var(--ptcb-staff-spacing-medium);
+    text-align: center;
+}
+
+/* Staff name/title - match Flatsome typography */
+.ptcb-staff-card-title {
+    margin-top: 0;
+    margin-bottom: 0.5em;
+    font-size: 1.1em;
+    font-weight: 600;
+    line-height: 1.3;
+    color: var(--ptcb-staff-title-color);
+}
+
+/* Separator between title and company title */
+.ptcb-staff-title-separator {
+    margin: var(--ptcb-staff-spacing-small) auto;
+    width: 40px;
+    border: 0;
+    height: 2px;
+    background-color: var(--ptcb-staff-separator-color);
+}
+
+/* Company title */
+.ptcb-staff-card-company-title {
+    font-size: 0.9em;
+    color: var(--ptcb-staff-company-color);
+    margin-top: 0.5em;
+    line-height: 1.4;
+}
+
+/* ----------------------------------------
+   6. "NO STAFF" MESSAGE STYLING
+   ---------------------------------------- */
+.ptcb-staff-not-found {
+    text-align: center;
+    padding: var(--ptcb-staff-spacing-large);
+    border: 1px solid var(--ptcb-staff-border-color);
+    background-color: #f9f9f9;
+    border-radius: 3px;
+    margin: var(--ptcb-staff-spacing-medium) 0;
+}
+
+/* ----------------------------------------
+   7. RESPONSIVE STYLES - USING FLATSOME BREAKPOINTS
+   ---------------------------------------- */
+/* Desktop: 850px and above is default styling above */
+
+/* Tablet: 550px to 849px */
+@media screen and (max-width: 849px) and (min-width: 550px) {
+    .ptcb-staff-column {
+        width: 50%;
+        max-width: 50%;
+        flex: 0 0 50%;
+    }
+}
+
+/* Mobile: 549px and below */
+@media screen and (max-width: 549px) {
+    .ptcb-staff-column {
+        width: 100%;
+        max-width: 100%;
+        flex: 0 0 100%;
+    }
+
+    .ptcb-staff-card-content {
+        padding: var(--ptcb-staff-spacing-small);
+    }
+}
