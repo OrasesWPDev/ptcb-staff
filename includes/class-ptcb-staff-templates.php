@@ -166,12 +166,4 @@ class PTCB_Staff_Templates {
 
 		ptcb_staff()->log('Added staff custom rewrite rules', 'debug');
 	}
-	/**
-	 * Flush rewrite rules to ensure our custom rules take effect
-	 */
-	public function flush_staff_rewrite_rules() {
-		$this->add_staff_rewrite_rules();
-		flush_rewrite_rules();
-		ptcb_staff()->log('Flushed rewrite rules for staff permalinks', 'info');
-	}
-}
+} // End of class PTCB_Staff_Templates
