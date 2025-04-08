@@ -49,11 +49,7 @@ get_header();
 								if (!empty($content)) {
 									the_content();
 								} else {
-									// Display fallback message if no content
-									echo '<h2>' . get_the_title() . '</h2>';
-									if (!empty($company_title)) {
-										echo '<div class="ptcb-staff-single-company-title">' . esc_html($company_title) . '</div>';
-									}
+									// Display fallback message if no content - DON'T repeat the title and company title
 									echo '<p class="ptcb-staff-no-bio">No bio information at this time. Check back later.</p>';
 								}
 								?>
